@@ -10,6 +10,13 @@ echo "GPU Backend: ${SHIMMY_GPU_BACKEND:-cuda}"
 echo "Proxy Port: 8080"
 echo "=========================================="
 
+# Ensure models directory and cache subdirectory exist with proper permissions
+echo "Setting up models directory..."
+mkdir -p ${SHIMMY_MODEL_PATH:-/models}/.cache
+chmod -R 755 ${SHIMMY_MODEL_PATH:-/models}
+echo "✅ Models directory ready"
+echo "=========================================="
+
 # Check if GPU is available (nvidia-smi comes from K8s device plugin)
 echo "Checking GPU availability..."
 if command -v nvidia-smi &> /dev/null; then
