@@ -1,0 +1,64 @@
+FROM rust:1.83-slim AS builder
+
+# Install ALL required build dependencies including clang/llvm
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    clang \
+    llvm-dev \
+    libclang-dev \
+    cmake \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Shimmy via cargo
+RUN cargo install shimmy
+
+# Runtime stage
+FROM debian:bookworm-slim
+
+# Install runtime dependencies including Python for the proxy
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    python3 \
+    python3-pip \
+    python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Flask and requests for the lightweight proxy
+RUN pip3 install --no-cache-dir flask requests --break-system-packages
+
+# Copy Shimmy binary from builder
+COPY --from=builder /usr/local/cargo/bin/shimmy /usr/local/bin/shimmy
+
+# Verify installation
+RUN shimmy --version && python3 --version
+
+# Create directories
+RUN mkdir -p /models /app
+
+# Copy the lightweight proxy and startup script
+COPY lightweight-proxy.py /app/lightweight-proxy.py
+COPY start-with-proxy.sh /app/start-with-proxy.sh
+
+# Make scripts executable
+RUN chmod +x /app/lightweight-proxy.py /app/start-with-proxy.sh
+
+# Create non-root user
+RUN useradd -m -u 1000 shimmy && \
+    chown -R shimmy:shimmy /models /app
+
+USER shimmy
+
+EXPOSE 8080
+
+ENV SHIMMY_PORT=8081
+ENV SHIMMY_MODEL_PATH=/models
+
+# Health check on the proxy endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8080/v1/health || exit 1
+
+# Use the startup script that runs both Shimmy and the proxy
+CMD ["/app/start-with-proxy.sh"]

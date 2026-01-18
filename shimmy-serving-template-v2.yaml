@@ -1,0 +1,34 @@
+apiVersion: ai.sap.com/v1alpha1
+kind: ServingTemplate
+metadata:
+  name: shimmy-lightweight
+  annotations:
+    scenarios.ai.sap.com/description: "Simple Shimmy inference server - binary only, no model baking"
+    scenarios.ai.sap.com/name: "shimmy-lightweight"
+    executables.ai.sap.com/description: "Direct Shimmy binary without proxy wrapper - minimal deployment"
+    executables.ai.sap.com/name: "shimmy-lightweight"
+  labels:
+    scenarios.ai.sap.com/id: "shimmy-lightweight"
+    ai.sap.com/version: "1.0.0"
+spec:
+  template:
+    apiVersion: "serving.kserve.io/v1beta1"
+    metadata:
+      annotations: |
+        autoscaling.knative.dev/metric: concurrency
+        autoscaling.knative.dev/target: 1
+        autoscaling.knative.dev/targetBurstCapacity: 0
+      labels: |
+        ai.sap.com/resourcePlan: infer.s
+    spec: |
+      predictor:
+        imagePullSecrets:
+        - name: ollamadocker
+        minReplicas: 1
+        maxReplicas: 1
+        containers:
+        - name: kserve-container
+          image: docker.io/gjkarthik/shimmy:latest
+          ports:
+          - containerPort: 8080
+            protocol: TCP

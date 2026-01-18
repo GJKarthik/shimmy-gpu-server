@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shimmy-rbac-test
+  namespace: kube-scb
+  labels:
+    app: shimmy-rbac-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shimmy-rbac-test
+  template:
+    metadata:
+      labels:
+        app: shimmy-rbac-test
+    spec:
+      containers:
+      - name: shimmy
+        image: docker.io/gjkarthik/shimmy:rbac-fix
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: SHIMMY_PORT
+          value: "8081"
+        - name: SHIMMY_MODEL_PATH
+          value: "/models"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /v1/health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3

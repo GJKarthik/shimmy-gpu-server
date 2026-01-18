@@ -1,0 +1,34 @@
+# Shimmy Inference Server - ARM64 (macOS) Version
+# This Dockerfile is for local testing on macOS ARM64 systems
+
+FROM ubuntu:22.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create directories
+RUN mkdir -p /opt/shimmy /models
+
+WORKDIR /opt/shimmy
+
+# Download shimmy-macos-arm64 binary (note: this will work in Docker on ARM64 hosts)
+RUN curl -L https://github.com/Michael-A-Kuykendall/shimmy/releases/latest/download/shimmy-macos-arm64 \
+    -o shimmy && \
+    chmod +x shimmy
+
+# Copy Gemma-2B-IT model from local filesystem
+# Note: This expects the model to be at models/gemma-2b-it-gguf/gemma-2-2b-it-Q4_K_M.gguf
+COPY models/gemma-2b-it-gguf/gemma-2-2b-it-Q4_K_M.gguf /models/gemma-2-2b-it-Q4_K_M.gguf
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Run shimmy server
+CMD ["./shimmy", "serve", "--model-path", "/models/gemma-2-2b-it-Q4_K_M.gguf", "--bind", "0.0.0.0:8080"]

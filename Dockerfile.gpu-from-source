@@ -1,0 +1,84 @@
+# GPU-Enabled Shimmy - Built from Source with CUDA Support
+# Based on official Shimmy Dockerfile with added llama-cuda feature
+
+FROM rust:1.85-slim as builder
+
+# Install ALL build dependencies including CUDA build tools
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    build-essential \
+    libclang-dev \
+    cmake \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Clone Shimmy source at specific version
+# Using git clone to get the full source with proper structure
+RUN git clone --depth 1 --branch v1.9.0 https://github.com/Michael-A-Kuykendall/shimmy.git . || \
+    git clone --depth 1 https://github.com/Michael-A-Kuykendall/shimmy.git .
+
+# Build with CUDA + HuggingFace features
+# This will take 10-15 minutes but produces a binary with GPU support
+RUN cargo build --release --features llama-cuda,huggingface
+
+# Runtime stage - Debian Bookworm (same as official)
+FROM debian:bookworm-slim
+
+# Install runtime dependencies + Python for proxy
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    curl \
+    python3 \
+    python3-pip \
+    python3-venv \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Flask, requests, and HuggingFace Hub for the enhanced proxy
+RUN pip3 install --no-cache-dir \
+    flask \
+    requests \
+    huggingface_hub \
+    --break-system-packages
+
+# Create app directory
+WORKDIR /app
+
+# Copy the GPU-enabled binary from builder
+COPY --from=builder /app/target/release/shimmy /usr/local/bin/shimmy
+
+# Verify installation
+RUN shimmy --version
+
+# Create directories
+RUN mkdir -p /models /app
+
+# Copy the enhanced model downloader proxy and GPU-enabled startup script
+COPY model-downloader-proxy.py /app/model-downloader-proxy.py
+COPY start-with-downloader-gpu.sh /app/start-with-downloader-gpu.sh
+
+# Make scripts executable
+RUN chmod +x /app/model-downloader-proxy.py /app/start-with-downloader-gpu.sh
+
+# Create non-root user
+RUN useradd -m -u 1000 shimmy && \
+    chown -R shimmy:shimmy /models /app
+
+USER shimmy
+
+EXPOSE 8080
+
+ENV SHIMMY_PORT=8081
+ENV SHIMMY_MODEL_PATH=/models
+ENV SHIMMY_GPU_BACKEND=cuda
+
+# Health check on the proxy endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8080/v1/health || exit 1
+
+# Use the GPU-enabled startup script
+CMD ["/app/start-with-downloader-gpu.sh"]

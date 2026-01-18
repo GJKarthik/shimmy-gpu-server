@@ -1,0 +1,49 @@
+FROM rust:1.83-slim AS builder
+
+# Install ALL required build dependencies including clang/llvm
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    clang \
+    llvm-dev \
+    libclang-dev \
+    cmake \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Shimmy via cargo
+RUN cargo install shimmy
+
+# Runtime stage
+FROM debian:bookworm-slim
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Shimmy binary from builder
+COPY --from=builder /usr/local/cargo/bin/shimmy /usr/local/bin/shimmy
+
+# Verify installation
+RUN shimmy --version
+
+# Create directories
+RUN mkdir -p /models
+
+# Create non-root user
+RUN useradd -m -u 1000 shimmy && \
+    chown -R shimmy:shimmy /models
+
+USER shimmy
+
+EXPOSE 8080
+
+ENV SHIMMY_PORT=8080
+ENV SHIMMY_MODEL_PATH=/models
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/v1/models || exit 1
+
+CMD ["shimmy", "serve", "--bind", "0.0.0.0:8080"]

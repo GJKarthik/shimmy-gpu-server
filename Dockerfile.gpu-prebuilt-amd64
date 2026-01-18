@@ -1,0 +1,59 @@
+# GPU-Enabled Shimmy for AMD64 using Official Pre-Built Binary
+# Uses Shimmy's official Linux x86_64 binary which includes CUDA + Vulkan + OpenCL
+
+FROM debian:bookworm-slim
+
+# Install runtime dependencies including Python for the proxy and procps for pgrep
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    python3 \
+    python3-pip \
+    python3-venv \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Flask, requests, and HuggingFace Hub for the enhanced proxy
+RUN pip3 install --no-cache-dir \
+    flask \
+    requests \
+    huggingface_hub \
+    --break-system-packages
+
+# Download official pre-built Shimmy binary for Linux x86_64
+# This binary includes CUDA + Vulkan + OpenCL support (verified in README.md)
+RUN curl -L https://github.com/Michael-A-Kuykendall/shimmy/releases/latest/download/shimmy-linux-x86_64 \
+    -o /usr/local/bin/shimmy && \
+    chmod +x /usr/local/bin/shimmy
+
+# Verify installation
+RUN shimmy --version && python3 --version
+
+# Create directories
+RUN mkdir -p /models /app
+
+# Copy the enhanced model downloader proxy and GPU-enabled startup script
+COPY model-downloader-proxy.py /app/model-downloader-proxy.py
+COPY start-with-downloader-gpu.sh /app/start-with-downloader-gpu.sh
+
+# Make scripts executable
+RUN chmod +x /app/model-downloader-proxy.py /app/start-with-downloader-gpu.sh
+
+# Create non-root user
+RUN useradd -m -u 1000 shimmy && \
+    chown -R shimmy:shimmy /models /app
+
+USER shimmy
+
+EXPOSE 8080
+
+ENV SHIMMY_PORT=8081
+ENV SHIMMY_MODEL_PATH=/models
+ENV SHIMMY_GPU_BACKEND=cuda
+
+# Health check on the proxy endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8080/v1/health || exit 1
+
+# Use the GPU-enabled startup script
+CMD ["/app/start-with-downloader-gpu.sh"]

@@ -1,0 +1,74 @@
+# GPU-Enabled Shimmy for NVIDIA T4 - Minimal Changes from Original
+# Key Change: Added llama-cuda feature flag to cargo install
+
+FROM rust:1.83-slim AS builder
+
+# Install ALL required build dependencies including clang/llvm
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    clang \
+    llvm-dev \
+    libclang-dev \
+    cmake \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Shimmy with CUDA support via cargo
+# CHANGE: Added --features llama-cuda,huggingface (was just "shimmy")
+RUN cargo install shimmy --features llama-cuda,huggingface
+
+# Runtime stage - Plain Debian (no NVIDIA base needed!)
+FROM debian:bookworm-slim
+
+# Install runtime dependencies including Python for the proxy and procps for pgrep
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    python3 \
+    python3-pip \
+    python3-venv \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Flask, requests, and HuggingFace Hub for the enhanced proxy
+RUN pip3 install --no-cache-dir \
+    flask \
+    requests \
+    huggingface_hub \
+    --break-system-packages
+
+# Copy Shimmy binary from builder (now has CUDA support!)
+COPY --from=builder /usr/local/cargo/bin/shimmy /usr/local/bin/shimmy
+
+# Verify installation
+RUN shimmy --version && python3 --version
+
+# Create directories
+RUN mkdir -p /models /app
+
+# Copy the enhanced model downloader proxy and GPU-enabled startup script
+COPY model-downloader-proxy.py /app/model-downloader-proxy.py
+COPY start-with-downloader-gpu.sh /app/start-with-downloader-gpu.sh
+
+# Make scripts executable
+RUN chmod +x /app/model-downloader-proxy.py /app/start-with-downloader-gpu.sh
+
+# Create non-root user
+RUN useradd -m -u 1000 shimmy && \
+    chown -R shimmy:shimmy /models /app
+
+USER shimmy
+
+EXPOSE 8080
+
+ENV SHIMMY_PORT=8081
+ENV SHIMMY_MODEL_PATH=/models
+ENV SHIMMY_GPU_BACKEND=cuda
+
+# Health check on the proxy endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8080/v1/health || exit 1
+
+# Use the GPU-enabled startup script
+CMD ["/app/start-with-downloader-gpu.sh"]

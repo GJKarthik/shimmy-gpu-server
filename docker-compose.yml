@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  shimmy:
+    build:
+      context: ../../../..
+      dockerfile: infrastructure/docker/images/shimmy-server/Dockerfile
+    image: shimmy-gemma-2b:latest
+    container_name: shimmy-inference-server
+    ports:
+      - "8080:8080"
+    environment:
+      - SHIMMY_PORT=8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
