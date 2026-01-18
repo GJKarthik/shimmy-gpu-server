@@ -52,8 +52,8 @@ WORKDIR /app
 # Copy the GPU-enabled binary from builder
 COPY --from=builder /app/target/release/shimmy /usr/local/bin/shimmy
 
-# Verify installation
-RUN shimmy --version
+# Verify binary exists and is executable (can't run --version without GPU driver)
+RUN test -x /usr/local/bin/shimmy && echo "Shimmy binary installed successfully"
 
 # Create directories
 RUN mkdir -p /models /app
