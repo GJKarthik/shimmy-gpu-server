@@ -52,10 +52,10 @@ RUN test -x /usr/local/bin/shimmy && echo "Shimmy binary installed successfully"
 # Create non-root user
 RUN useradd -m -u 1000 shimmy
 
-# Create directories including cache subdirectory with proper ownership
-RUN mkdir -p /models/.cache /app && \
+# Create directories including all HuggingFace cache subdirectories with proper ownership
+RUN mkdir -p /models/.cache/huggingface/hub /models/.cache/huggingface/transformers /app && \
     chown -R shimmy:shimmy /models /app && \
-    chmod -R 755 /models
+    chmod -R 777 /models
 
 # Copy the enhanced model downloader proxy and GPU-enabled startup script
 COPY --chown=shimmy:shimmy model-downloader-proxy.py /app/model-downloader-proxy.py
