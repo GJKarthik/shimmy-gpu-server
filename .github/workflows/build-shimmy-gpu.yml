@@ -11,9 +11,9 @@ on:
     branches:
       - main
     paths:
-      - 'infrastructure/docker/images/shimmy-server/Dockerfile.gpu-nvidia-base'
-      - 'infrastructure/docker/images/shimmy-server/start-with-downloader-gpu.sh'
-      - 'infrastructure/docker/images/shimmy-server/model-downloader-proxy.py'
+      - 'Dockerfile.gpu-nvidia-base'
+      - 'start-with-downloader-gpu.sh'
+      - 'model-downloader-proxy.py'
       - '.github/workflows/build-shimmy-gpu.yml'
 
 jobs:
@@ -46,8 +46,8 @@ jobs:
       - name: Build and push GPU image
         uses: docker/build-push-action@v5
         with:
-          context: ./infrastructure/docker/images/shimmy-server
-          file: ./infrastructure/docker/images/shimmy-server/Dockerfile.gpu-nvidia-base
+          context: .
+          file: ./Dockerfile.gpu-nvidia-base
           platforms: linux/amd64
           push: true
           tags: docker.io/gjkarthik/shimmy:${{ steps.tag.outputs.TAG }}
