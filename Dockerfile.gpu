@@ -49,19 +49,20 @@ COPY --from=builder /root/.cargo/bin/shimmy /usr/local/bin/shimmy
 # Verify binary exists and is executable (can't run --version without GPU driver)
 RUN test -x /usr/local/bin/shimmy && echo "Shimmy binary installed successfully" && python3 --version
 
-# Create directories
-RUN mkdir -p /models /app
+# Create non-root user
+RUN useradd -m -u 1000 shimmy
+
+# Create directories including cache subdirectory with proper ownership
+RUN mkdir -p /models/.cache /app && \
+    chown -R shimmy:shimmy /models /app && \
+    chmod -R 755 /models
 
 # Copy the enhanced model downloader proxy and GPU-enabled startup script
-COPY model-downloader-proxy.py /app/model-downloader-proxy.py
-COPY start-with-downloader-gpu.sh /app/start-with-downloader-gpu.sh
+COPY --chown=shimmy:shimmy model-downloader-proxy.py /app/model-downloader-proxy.py
+COPY --chown=shimmy:shimmy start-with-downloader-gpu.sh /app/start-with-downloader-gpu.sh
 
 # Make scripts executable
 RUN chmod +x /app/model-downloader-proxy.py /app/start-with-downloader-gpu.sh
-
-# Create non-root user
-RUN useradd -m -u 1000 shimmy && \
-    chown -R shimmy:shimmy /models /app
 
 USER shimmy
 

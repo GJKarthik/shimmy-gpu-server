@@ -10,11 +10,13 @@ echo "GPU Backend: ${SHIMMY_GPU_BACKEND:-cuda}"
 echo "Proxy Port: 8080"
 echo "=========================================="
 
-# Ensure models directory and cache subdirectory exist with proper permissions
-echo "Setting up models directory..."
-mkdir -p ${SHIMMY_MODEL_PATH:-/models}/.cache
-chmod -R 755 ${SHIMMY_MODEL_PATH:-/models}
-echo "✅ Models directory ready"
+# Verify models directory is writable (already created in Dockerfile)
+echo "Checking models directory..."
+if [ -w "${SHIMMY_MODEL_PATH:-/models}" ]; then
+    echo "✅ Models directory is writable"
+else
+    echo "⚠️ WARNING: Models directory may not be writable"
+fi
 echo "=========================================="
 
 # Check if GPU is available (nvidia-smi comes from K8s device plugin)
