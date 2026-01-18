@@ -71,6 +71,8 @@ EXPOSE 8080
 ENV SHIMMY_PORT=8081
 ENV SHIMMY_MODEL_PATH=/models
 ENV SHIMMY_GPU_BACKEND=cuda
+ENV HOME=/home/shimmy
+ENV HF_HOME=/models/.cache/huggingface
 
 # Health check on the proxy endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
