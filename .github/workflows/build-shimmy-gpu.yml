@@ -11,7 +11,7 @@ on:
     branches:
       - main
     paths:
-      - 'Dockerfile.gpu-nvidia-base'
+      - 'Dockerfile.gpu'
       - 'start-with-downloader-gpu.sh'
       - 'model-downloader-proxy.py'
       - '.github/workflows/build-shimmy-gpu.yml'
@@ -47,7 +47,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.gpu-nvidia-base
+          file: ./Dockerfile.gpu
           platforms: linux/amd64
           push: true
           tags: docker.io/gjkarthik/shimmy:${{ steps.tag.outputs.TAG }}
