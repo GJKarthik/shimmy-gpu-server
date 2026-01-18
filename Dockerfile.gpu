@@ -1,10 +1,11 @@
 # GPU-Enabled Shimmy for NVIDIA T4 - Minimal Changes from Original
 # Key Change: Added llama-cuda feature flag to cargo install
 
-FROM rust:1.83-slim AS builder
+FROM nvidia/cuda:12.3.0-devel-ubuntu22.04 AS builder
 
-# Install ALL required build dependencies including clang/llvm
+# Install Rust and build dependencies
 RUN apt-get update && apt-get install -y \
+    curl \
     pkg-config \
     libssl-dev \
     clang \
@@ -13,6 +14,10 @@ RUN apt-get update && apt-get install -y \
     cmake \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Rust toolchain
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Shimmy with CUDA support via cargo
 # CHANGE: Added --features llama-cuda,huggingface (was just "shimmy")
@@ -39,10 +44,10 @@ RUN pip3 install --no-cache-dir \
     --break-system-packages
 
 # Copy Shimmy binary from builder (now has CUDA support!)
-COPY --from=builder /usr/local/cargo/bin/shimmy /usr/local/bin/shimmy
+COPY --from=builder /root/.cargo/bin/shimmy /usr/local/bin/shimmy
 
-# Verify installation
-RUN shimmy --version && python3 --version
+# Verify binary exists and is executable (can't run --version without GPU driver)
+RUN test -x /usr/local/bin/shimmy && echo "Shimmy binary installed successfully" && python3 --version
 
 # Create directories
 RUN mkdir -p /models /app
