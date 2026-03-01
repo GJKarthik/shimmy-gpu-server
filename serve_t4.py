@@ -48,7 +48,6 @@ def main():
     # Disable context_fmha for T4 compatibility
     # This is the key fix - T4 doesn't support the fused multi-head attention kernel
     build_config.plugin_config.context_fmha = False
-    build_config.plugin_config.context_fmha_fp32_acc = False
     
     print(f"Build config - context_fmha: {build_config.plugin_config.context_fmha}")
     
