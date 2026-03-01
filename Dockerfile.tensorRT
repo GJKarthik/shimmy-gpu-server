@@ -8,10 +8,8 @@ FROM nvcr.io/nvidia/tritonserver:25.01-trtllm-python-py3
 ENV LANG=C.UTF-8
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install additional dependencies (TensorRT-LLM is already in the base image)
-RUN apt-get update && apt-get install -y git git-lfs && rm -rf /var/lib/apt/lists/* && \
-    pip3 install --upgrade pip && \
-    pip3 install huggingface_hub transformers sentencepiece protobuf
+# Install git/git-lfs for model downloads (Python packages already in base image)
+RUN apt-get update && apt-get install -y git git-lfs && rm -rf /var/lib/apt/lists/*
 
 # SAP AI Core Permissions & Directory Setup
 RUN mkdir -p /nonexistent/ /hf-home/ /engines/ /checkpoint/ && \
