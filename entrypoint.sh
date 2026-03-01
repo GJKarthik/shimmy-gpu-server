@@ -40,30 +40,22 @@ echo "--- STEP 2: Downloading Tokenizer from Base Model ---"
 export TOKENIZER_PATH=$(python3 -c "from huggingface_hub import snapshot_download; print(snapshot_download('${TOKENIZER_MODEL}', allow_patterns=['*.json', '*.model', 'tokenizer*']))")
 echo "Tokenizer downloaded to: $TOKENIZER_PATH"
 
-echo "--- STEP 3: Starting TensorRT-LLM Server ---"
+echo "--- STEP 3: Starting TensorRT-LLM Server (T4 Optimized) ---"
 echo "Server will be available at http://0.0.0.0:8000"
 echo "OpenAI-compatible endpoints: /v1/completions, /v1/chat/completions"
 echo ""
-echo "trtllm-serve will automatically build the TensorRT engine from the checkpoint"
-echo "and start serving. This may take a few minutes on first run..."
+echo "Using custom serve_t4.py with context_fmha DISABLED for T4 compatibility"
+echo "(T4 Turing architecture SM 75 doesn't support fused multi-head attention)"
 echo ""
 
-# TensorRT-LLM serve command (validated against v0.17.0/v0.18.0 serve.py):
-# 
-# The trtllm-serve command handles both engine building AND serving in one step.
-# It accepts: model name | HF checkpoint path | safetensors directory
-# It does NOT accept pre-built TensorRT engine directories.
-#
-# Arguments:
-# - MODEL: positional argument - checkpoint path (not engine directory!)
-# - --tokenizer: Path to tokenizer 
-# - --host: Server hostname
-# - --port: Server port
-# - --max_batch_size, --max_seq_len, etc: Build configuration options
-#
-trtllm-serve "$CHECKPOINT_PATH" \
-    --tokenizer "$TOKENIZER_PATH" \
-    --host 0.0.0.0 \
-    --port 8000 \
-    --max_batch_size "$MAX_BATCH" \
-    --max_seq_len "$MAX_SEQ"
+# Export environment variables for the Python script
+export CHECKPOINT_PATH
+export TOKENIZER_PATH
+export HOST="0.0.0.0"
+export PORT="8000"
+export MAX_BATCH="$MAX_BATCH"
+export MAX_SEQ="$MAX_SEQ"
+
+# Run custom T4-optimized server
+# Key difference from trtllm-serve: BuildConfig.plugin_config.context_fmha = False
+python3 /serve_t4.py

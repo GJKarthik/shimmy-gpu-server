@@ -25,7 +25,8 @@ ENV CHECKPOINT_DIR=/checkpoint
 WORKDIR /workspace
 
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY serve_t4.py /serve_t4.py
+RUN chmod +x /entrypoint.sh /serve_t4.py
 
 EXPOSE 8000
 ENTRYPOINT ["/entrypoint.sh"]
