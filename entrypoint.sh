@@ -42,11 +42,12 @@ echo "--- STEP 3: Building TensorRT-LLM Engine (Optimized for T4) ---"
 # Build engine directly from checkpoint (no conversion needed!)
 # The checkpoint was created with TRT-LLM v0.18.0 convert_checkpoint.py
 #
-# v0.18.0 Build Options:
-# - --kv_cache_type paged: Use paged KV cache (replaces deprecated --paged_kv_cache)
-# - --remove_input_padding enable: Remove padding for better throughput
-# - --gemm_plugin float16: Use FP16 GEMM plugin for T4 compatibility
-# - --max_batch_size/max_input_len/max_seq_len: Configure sequence limits
+# T4 GPU Compatibility Notes (Turing architecture, SM 75):
+# - context_fmha disable: T4 doesn't support fused multi-head attention kernel
+# - gpt_attention_plugin float16: Use standard attention plugin instead
+# - gemm_plugin float16: Use FP16 GEMM plugin
+# - kv_cache_type paged: Use paged KV cache
+# - remove_input_padding enable: Remove padding for better throughput
 #
 trtllm-build \
     --checkpoint_dir "$CHECKPOINT_PATH" \
@@ -56,7 +57,9 @@ trtllm-build \
     --max_seq_len "$MAX_SEQ" \
     --kv_cache_type paged \
     --remove_input_padding enable \
-    --gemm_plugin float16
+    --gemm_plugin float16 \
+    --gpt_attention_plugin float16 \
+    --context_fmha disable
 
 echo "Engine built successfully!"
 ls -la "$TRT_ENGINE_DIR"
