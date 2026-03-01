@@ -12,10 +12,12 @@ CHECKPOINT_MODEL=${MODEL:-"rungalileo/mistral-7b-instruct-v0.3-trtllm-ckpt-wq_in
 # Base model for tokenizer
 TOKENIZER_MODEL=${TOKENIZER:-"mistralai/Mistral-7B-Instruct-v0.3"}
 
-# Build configuration
-MAX_BATCH=${MAX_BATCH_SIZE:-"8"}
-MAX_INPUT=${MAX_INPUT_LEN:-"4096"}
-MAX_SEQ=${MAX_SEQ_LEN:-"8192"}
+# Build configuration - T4 GPU has only 16GB VRAM, reduce settings to fit
+# Original settings (8 batch, 4096 input, 8192 seq) require ~24.5GB scratch space
+# Reduced settings to fit within T4's 16GB memory
+MAX_BATCH=${MAX_BATCH_SIZE:-"4"}
+MAX_INPUT=${MAX_INPUT_LEN:-"2048"}
+MAX_SEQ=${MAX_SEQ_LEN:-"4096"}
 
 echo "=============================================="
 echo "TensorRT-LLM Pre-converted Checkpoint Deployment"
