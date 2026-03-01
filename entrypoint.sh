@@ -40,51 +40,30 @@ echo "--- STEP 2: Downloading Tokenizer from Base Model ---"
 export TOKENIZER_PATH=$(python3 -c "from huggingface_hub import snapshot_download; print(snapshot_download('${TOKENIZER_MODEL}', allow_patterns=['*.json', '*.model', 'tokenizer*']))")
 echo "Tokenizer downloaded to: $TOKENIZER_PATH"
 
-echo "--- STEP 3: Building TensorRT-LLM Engine (Optimized for T4) ---"
-# Build engine directly from checkpoint (no conversion needed!)
-# The checkpoint was created with TRT-LLM v0.18.0 convert_checkpoint.py
-#
-# T4 GPU Compatibility Notes (Turing architecture, SM 75):
-# - context_fmha disable: T4 doesn't support fused multi-head attention kernel
-# - gpt_attention_plugin float16: Use standard attention plugin instead
-# - gemm_plugin float16: Use FP16 GEMM plugin
-# - kv_cache_type paged: Use paged KV cache
-# - remove_input_padding enable: Remove padding for better throughput
-#
-trtllm-build \
-    --checkpoint_dir "$CHECKPOINT_PATH" \
-    --output_dir "$TRT_ENGINE_DIR" \
-    --max_batch_size "$MAX_BATCH" \
-    --max_input_len "$MAX_INPUT" \
-    --max_seq_len "$MAX_SEQ" \
-    --kv_cache_type paged \
-    --remove_input_padding enable \
-    --gemm_plugin float16 \
-    --gpt_attention_plugin float16 \
-    --context_fmha disable
-
-echo "Engine built successfully!"
-ls -la "$TRT_ENGINE_DIR"
-
-echo "--- STEP 4: Copying Tokenizer Files to Engine Directory ---"
-# Copy tokenizer files so the server can decode tokens
-cp "$TOKENIZER_PATH"/*.json "$TRT_ENGINE_DIR/" 2>/dev/null || true
-cp "$TOKENIZER_PATH"/*.model "$TRT_ENGINE_DIR/" 2>/dev/null || true
-cp "$TOKENIZER_PATH"/tokenizer* "$TRT_ENGINE_DIR/" 2>/dev/null || true
-echo "Tokenizer files copied to engine directory"
-
-echo "--- STEP 5: Starting TensorRT-LLM Server ---"
+echo "--- STEP 3: Starting TensorRT-LLM Server ---"
 echo "Server will be available at http://0.0.0.0:8000"
 echo "OpenAI-compatible endpoints: /v1/completions, /v1/chat/completions"
-echo "Engine directory contents:"
-ls -la "$TRT_ENGINE_DIR"
+echo ""
+echo "trtllm-serve will automatically build the TensorRT engine from the checkpoint"
+echo "and start serving. This may take a few minutes on first run..."
+echo ""
 
 # TensorRT-LLM serve command (validated against v0.17.0/v0.18.0 serve.py):
-# - MODEL: positional argument (TensorRT engine path)
-# - --tokenizer: Path to tokenizer (required for TRT engine)
+# 
+# The trtllm-serve command handles both engine building AND serving in one step.
+# It accepts: model name | HF checkpoint path | safetensors directory
+# It does NOT accept pre-built TensorRT engine directories.
+#
+# Arguments:
+# - MODEL: positional argument - checkpoint path (not engine directory!)
+# - --tokenizer: Path to tokenizer 
 # - --host: Server hostname
 # - --port: Server port
-trtllm-serve "$TRT_ENGINE_DIR" \
+# - --max_batch_size, --max_seq_len, etc: Build configuration options
+#
+trtllm-serve "$CHECKPOINT_PATH" \
     --tokenizer "$TOKENIZER_PATH" \
     --host 0.0.0.0 \
-    --port 8000
+    --port 8000 \
+    --max_batch_size "$MAX_BATCH" \
+    --max_seq_len "$MAX_SEQ"
