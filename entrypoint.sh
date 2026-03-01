@@ -76,9 +76,12 @@ echo "Tokenizer files copied to engine directory"
 echo "--- STEP 5: Starting TensorRT-LLM Server ---"
 echo "Server will be available at http://0.0.0.0:8000"
 echo "OpenAI-compatible endpoints: /v1/completions, /v1/chat/completions"
+echo "Engine directory contents:"
+ls -la "$TRT_ENGINE_DIR"
 
-# Using trtllm-serve for OpenAI-compatible API
-trtllm-serve "$TRT_ENGINE_DIR" \
-    --tokenizer "$TOKENIZER_PATH" \
+# TRT-LLM v0.18.0 serve command with correct syntax
+python3 -m tensorrt_llm.commands.serve \
+    --model_dir "$TRT_ENGINE_DIR" \
+    --tokenizer_dir "$TOKENIZER_PATH" \
     --host 0.0.0.0 \
     --port 8000
