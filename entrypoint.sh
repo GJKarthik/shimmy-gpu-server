@@ -79,9 +79,12 @@ echo "OpenAI-compatible endpoints: /v1/completions, /v1/chat/completions"
 echo "Engine directory contents:"
 ls -la "$TRT_ENGINE_DIR"
 
-# TRT-LLM v0.18.0 serve command with correct syntax
-python3 -m tensorrt_llm.commands.serve \
-    --model_dir "$TRT_ENGINE_DIR" \
-    --tokenizer_dir "$TOKENIZER_PATH" \
+# TensorRT-LLM serve command (validated against v0.17.0/v0.18.0 serve.py):
+# - MODEL: positional argument (TensorRT engine path)
+# - --tokenizer: Path to tokenizer (required for TRT engine)
+# - --host: Server hostname
+# - --port: Server port
+trtllm-serve "$TRT_ENGINE_DIR" \
+    --tokenizer "$TOKENIZER_PATH" \
     --host 0.0.0.0 \
     --port 8000
