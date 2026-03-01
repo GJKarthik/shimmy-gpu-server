@@ -1,0 +1,29 @@
+# TensorRT-LLM v0.18.0 Deployment for SAP AI Core
+# Optimized for pre-converted checkpoints with INT4 AWQ + INT8 KV cache
+
+# Use TensorRT-LLM v0.18.0 compatible base image
+FROM nvcr.io/nvidia/tritonserver:25.01-trtllm-python-py3
+
+ENV LANG=C.UTF-8
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies for TensorRT-LLM v0.18.0
+RUN apt-get update && apt-get install -y git git-lfs && rm -rf /var/lib/apt/lists/* && \
+    pip3 install --upgrade pip && \
+    pip3 install tensorrt_llm==0.18.0 --extra-index-url https://pypi.nvidia.com && \
+    pip3 install huggingface_hub transformers sentencepiece protobuf
+
+# SAP AI Core Permissions & Directory Setup
+RUN mkdir -p /nonexistent/ /hf-home/ /engines/ /checkpoint/ && \
+    chown -R nobody:nogroup /nonexistent /hf-home/ /engines/ /checkpoint/ && \
+    chmod -R 770 /nonexistent/ /hf-home/ /engines/ /checkpoint/
+
+ENV HF_HOME=/hf-home
+ENV TRT_ENGINE_DIR=/engines
+ENV CHECKPOINT_DIR=/checkpoint
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 8000
+ENTRYPOINT ["/entrypoint.sh"]

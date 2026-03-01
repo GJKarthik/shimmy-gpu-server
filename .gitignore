@@ -8,3 +8,33 @@ __pycache__/
 *~
 .vscode/
 .idea/
+
+# Deployment logs and raw data
+deployment-*.txt
+deployment-*.json
+deployment-logs*.txt
+deployment-logs*.json
+
+# Model files (too large for git)
+*.gguf
+*.bin
+*.safetensors
+
+# Scripts that may contain secrets/credentials
+*secret*.sh
+*creds*.sh
+fix-*.sh
+recreate-*.sh
+verify-*.sh
+test-s3*.sh
+setup-*.sh
+upload-*.sh
+check-*.sh
+create-*.sh
+get-*.sh
+list-*.sh
+rename-*.sh
+register-*.sh
+
+# Status/config files with potential secrets
+S3_CONFIGURATION_STATUS.md
