@@ -12,13 +12,17 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y git git-lfs && rm -rf /var/lib/apt/lists/*
 
 # SAP AI Core Permissions & Directory Setup
-RUN mkdir -p /nonexistent/ /hf-home/ /engines/ /checkpoint/ && \
-    chown -R nobody:nogroup /nonexistent /hf-home/ /engines/ /checkpoint/ && \
-    chmod -R 770 /nonexistent/ /hf-home/ /engines/ /checkpoint/
+# TensorRT-LLM writes model.cache to current working directory
+RUN mkdir -p /nonexistent/ /hf-home/ /engines/ /checkpoint/ /workspace/ && \
+    chown -R nobody:nogroup /nonexistent /hf-home/ /engines/ /checkpoint/ /workspace/ && \
+    chmod -R 777 /nonexistent/ /hf-home/ /engines/ /checkpoint/ /workspace/
 
 ENV HF_HOME=/hf-home
 ENV TRT_ENGINE_DIR=/engines
 ENV CHECKPOINT_DIR=/checkpoint
+
+# Set writable working directory for TensorRT cache files
+WORKDIR /workspace
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
